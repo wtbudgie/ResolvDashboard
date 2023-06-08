@@ -12,6 +12,7 @@ import {
   Flex,
   Heading,
   IconButton,
+  Link,
   Menu,
   MenuButton,
   MenuItem,
@@ -47,6 +48,7 @@ const Home: NextPage = () => {
   const { data: user, status } = useSession();
   const url = "https://discord.com/api/v9/users/@me/guilds";
   const [guildArray, setGuildArray] = useState<Array<guild>>([]);
+  const [loading, setLoading] = useState(true);
 
   const getGuilds = async () => {
     let retryAttempts = 0;
@@ -59,17 +61,25 @@ const Home: NextPage = () => {
             Authorization: `Bearer ${user?.user?.token}`,
           },
         });
+
         const data = response.data;
-        const guilds: Array<guild> = data.map((a: guildResponse) => ({
-          id: a.id,
-          name: a.name,
-          permissions: a.permissions,
-          icon: a.icon
-            ? `https://cdn.discordapp.com/icons/${a.id}/${a.icon}.png`
-            : "/DefaultIcon.png",
-          link: `/servers/${a.id}`,
-        }));
+        const guilds: Array<guild> = [];
+        data.forEach((a: guildResponse) => {
+          if ((BigInt(a.permissions) & BigInt(1 << 5)) !== BigInt(0)) {
+            guilds.push({
+              id: a.id,
+              name: a.name,
+              permissions: a.permissions,
+              icon: a.icon
+                ? `https://cdn.discordapp.com/icons/${a.id}/${a.icon}.png`
+                : "/DefaultIcon.png",
+              link: `/servers/${a.id}`,
+            });
+          }
+        });
+        console.log(guilds[0]?.permissions);
         setGuildArray(guilds);
+        setLoading(false);
         break;
       } catch (error: any) {
         if (error.response?.status === 429) {
@@ -95,42 +105,80 @@ const Home: NextPage = () => {
   }, [status]);
 
   if (status == "authenticated") {
-    console.log(guildArray);
-    return (
-      <>
-        <NavServerList />
-        <Box maxW="3xl" mx="auto" mt={8} px={8} py={4} rounded="lg" shadow="lg">
-          <Flex align="center" justify="space-between" mb={8}>
-            <Heading as="h1" size="lg">
-              Resolv Dashboard
-            </Heading>
-            <Menu>
-              <MenuButton
-                as={IconButton}
-                aria-label="Options"
-                icon={<FiHelpCircle />}
-                variant="outline"
-              />
-              <MenuList>
-                <MenuItem icon={<CgWebsite />}>Documentation</MenuItem>
-                <MenuItem icon={<FaDiscord />}>Support</MenuItem>
-              </MenuList>
-            </Menu>
-          </Flex>
-          <Text mb={4}>Select an item</Text>
-          <SimpleGrid columns={[1, 2, 3]} spacing={8}>
-            {guildArray.map((server) => (
-              <Card key={server.link} p={4} shadow="md" rounded="md">
-                <Avatar src={server.icon} size="2xl" mb={4} />
-                <Heading as="h2" size="md">
-                  {server.name}
-                </Heading>
-              </Card>
-            ))}
-          </SimpleGrid>
-        </Box>
-      </>
-    );
+    if (loading) {
+      return (
+        <>
+          <NavServerList />
+          <div
+            style={{
+              textAlign: "center",
+              fontSize: "30px",
+              paddingTop: "50px",
+            }}
+          >
+            Loading...
+          </div>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <NavServerList />
+          <Box
+            maxW="3xl"
+            mx="auto"
+            mt={8}
+            px={8}
+            py={4}
+            rounded="lg"
+            shadow="lg"
+          >
+            <Flex align="center" justify="space-between" mb={8}>
+              <Heading as="h1" size="lg">
+                Resolv Dashboard
+              </Heading>
+              <Menu>
+                <MenuButton
+                  as={IconButton}
+                  aria-label="Options"
+                  icon={<FiHelpCircle />}
+                  variant="outline"
+                />
+                <MenuList>
+                  <MenuItem icon={<CgWebsite />}>Documentation</MenuItem>
+                  <MenuItem icon={<FaDiscord />}>Support</MenuItem>
+                </MenuList>
+              </Menu>
+            </Flex>
+            <Flex justify="center">
+              <SimpleGrid columns={[1, 2, 3]} spacing={10} spacingX={20}>
+                {guildArray.map((server) => (
+                  <Card
+                    key={server.link}
+                    p={10}
+                    shadow="md"
+                    rounded="md"
+                    width="250px"
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    textAlign="center"
+                  >
+                    <Link href={`${server.link}`}>
+                      <Avatar src={server.icon} size="2xl" mb={4} />
+                      <Heading as="h2" size="md">
+                        {server.name}
+                      </Heading>
+                    </Link>
+                  </Card>
+                ))}
+              </SimpleGrid>
+            </Flex>
+          </Box>
+        </>
+      );
+    }
   } else {
     if (status == "unauthenticated") signIn("discord");
 
