@@ -52,7 +52,7 @@ interface Guild {
   name: string;
 }
 
-const Home: React.FC<HomeProps> = ({ botGuilds }) => {
+const ServerSelector: React.FC<HomeProps> = ({ botGuilds }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: user, status } = useSession();
@@ -264,4 +264,4 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
   }
 };
 
-export default Home;
+export default ServerSelector;

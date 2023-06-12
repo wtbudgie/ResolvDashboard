@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from "axios";
 import { NextApiRequest, NextApiResponse } from "next";
 
 // example request: /user/guilds?guildId=123
-const Home = async (req: NextApiRequest, res: NextApiResponse) => {
+const GetChannels = async (req: NextApiRequest, res: NextApiResponse) => {
   const guildId = req.query.guildId;
   if (!guildId) return res.json("No guild ID provided");
 
@@ -24,4 +24,4 @@ const Home = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 };
 
-export default Home;
+export default GetChannels;

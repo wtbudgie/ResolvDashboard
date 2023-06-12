@@ -6,7 +6,6 @@ import { FaDiscord } from "react-icons/fa";
 import { FiHelpCircle } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import {
-  AbsoluteCenter,
   Box,
   Button,
   Card,
@@ -52,7 +51,7 @@ interface guild {
   nsfw: boolean;
 }
 
-const Home: NextPage = () => {
+const ServerConfigEditorPage: NextPage = () => {
   const router = useRouter();
   const { data: user, status } = useSession();
 
@@ -72,10 +71,10 @@ const Home: NextPage = () => {
     try {
       const id = router.query.guildId;
       const apiUrl = "http://localhost:3000/api";
-      const getGuild = await axios.get(`${apiUrl}/guild/info?guildId=${id}`);
       const getConfig = await axios.get(
         `${apiUrl}/config/guild?token=${user?.user?.token}&id=${id}`
       );
+      const getGuild = await axios.get(`${apiUrl}/guild/info?guildId=${id}`);
       const getChannel = await axios.get(
         `${apiUrl}/guild/channels?guildId=${id}`
       );
@@ -371,4 +370,4 @@ const Home: NextPage = () => {
   }
 };
 
-export default Home;
+export default ServerConfigEditorPage;

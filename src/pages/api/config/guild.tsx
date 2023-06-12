@@ -5,7 +5,7 @@ import dbConnect from "~/db";
 import configModel, { IConfig } from "~/models/GuildModel";
 
 // example request: /config/guild?token=123&id=123
-const Home = async (req: NextApiRequest, res: NextApiResponse) => {
+const RequestConfig = async (req: NextApiRequest, res: NextApiResponse) => {
   const token = req.query.token;
   const guildId = req.query.id;
   if (!token || !guildId) {
@@ -49,4 +49,4 @@ const Home = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 };
 
-export default Home;
+export default RequestConfig;
