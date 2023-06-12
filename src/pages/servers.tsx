@@ -1,5 +1,5 @@
-import axios, { AxiosResponse } from "axios";
-import { type NextPage } from "next";
+import axios from "axios";
+import { GetServerSideProps, GetServerSidePropsResult } from "next";
 import { signIn, useSession } from "next-auth/react";
 import { CgWebsite } from "react-icons/cg";
 import { FaDiscord } from "react-icons/fa";
@@ -18,10 +18,10 @@ import {
   MenuItem,
   MenuList,
   SimpleGrid,
-  Text,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { NavServerList } from "~/components/NavServerList";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/router";
 
 interface guild {
   icon: string;
@@ -43,12 +43,43 @@ interface guildResponse {
 const MAX_RETRY_ATTEMPTS = 3;
 const INITIAL_BACKOFF_DELAY = 1000;
 
-const Home: NextPage = () => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+interface HomeProps {
+  botGuilds: Guild[];
+}
+
+interface Guild {
+  id: string;
+  name: string;
+}
+
+const Home: React.FC<HomeProps> = ({ botGuilds }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: user, status } = useSession();
   const url = "https://discord.com/api/v9/users/@me/guilds";
   const [guildArray, setGuildArray] = useState<Array<guild>>([]);
   const [loading, setLoading] = useState(true);
+
+  const isBotInServer = (serverId: string) => {
+    for (const guild of botGuilds) {
+      console.log(serverId);
+      if (guild.id === serverId) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (searchParams?.get("guild_id") && searchParams?.get("permissions")) {
+      const guild_id: string = searchParams?.get("guild_id") as string;
+      const permissions: string = searchParams?.get("permissions") as string;
+      if ((BigInt(permissions) & BigInt(1 << 5)) == BigInt(0)) return;
+      if (!isBotInServer(guild_id)) return;
+
+      router.push(`/servers/${guild_id}`);
+    }
+  }, []);
 
   const getGuilds = async () => {
     let retryAttempts = 0;
@@ -64,8 +95,21 @@ const Home: NextPage = () => {
 
         const data = response.data;
         const guilds: Array<guild> = [];
+        console.log(botGuilds);
+
         data.forEach((a: guildResponse) => {
-          if ((BigInt(a.permissions) & BigInt(1 << 5)) !== BigInt(0)) {
+          if ((BigInt(a.permissions) & BigInt(1 << 5)) == BigInt(0)) return;
+          if (!isBotInServer(a.id)) {
+            guilds.push({
+              id: a.id,
+              name: a.name,
+              permissions: a.permissions,
+              icon: a.icon
+                ? `https://cdn.discordapp.com/icons/${a.id}/${a.icon}.png`
+                : "/DefaultIcon.png",
+              link: `https://discord.com/oauth2/authorize?scope=identify%20bot%20applications.commands&client_id=979547354539634700&permissions=470674687&redirect_uri=http://localhost:3000/servers&disable_guild_select=true&guild_id=${a.id}&response_type=code`,
+            });
+          } else {
             guilds.push({
               id: a.id,
               name: a.name,
@@ -77,7 +121,7 @@ const Home: NextPage = () => {
             });
           }
         });
-        console.log(guilds[0]?.permissions);
+
         setGuildArray(guilds);
         setLoading(false);
         break;
@@ -183,6 +227,40 @@ const Home: NextPage = () => {
     if (status == "unauthenticated") signIn("discord");
 
     return <p>Loading...</p>;
+  }
+};
+
+// @ts-ignore
+export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
+  try {
+    const botToken = process.env.DISCORD_TOKEN;
+
+    const response = await axios.get(
+      "https://discord.com/api/v9/users/@me/guilds",
+      {
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      }
+    );
+
+    if (response.status === 200) {
+      const botGuilds: Guild[] = response.data;
+      return {
+        props: {
+          botGuilds,
+        },
+      } as GetServerSidePropsResult<HomeProps>;
+    }
+
+    throw new Error("Unable to fetch guilds");
+  } catch (error) {
+    console.error("Error fetching guilds:", error);
+    return {
+      props: {
+        guilds: [],
+      },
+    };
   }
 };
 

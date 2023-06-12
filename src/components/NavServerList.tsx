@@ -18,10 +18,12 @@ import {
 } from "@chakra-ui/react";
 import { AppLogo } from "../components/AppLogo";
 import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/router";
 
 export const NavServerList = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const { data: session } = useSession();
+  const router = useRouter();
 
   return (
     <>
@@ -74,12 +76,13 @@ export const NavServerList = () => {
                     <Link href="/settings">Account Settings</Link>
                   </MenuItem>
                   <MenuItem
-                    onClick={() =>
-                      signOut({
-                        redirect: false,
+                    onClick={async () => {
+                      const data = await signOut({
+                        redirect: true,
                         callbackUrl: "https://resolvbot.xyz/",
-                      })
-                    }
+                      });
+                      router.push("https://resolvbot.xyz/");
+                    }}
                   >
                     Logout
                   </MenuItem>

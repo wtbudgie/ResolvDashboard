@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { type NextPage } from "next";
 import { signIn, useSession } from "next-auth/react";
 import { CgWebsite } from "react-icons/cg";
@@ -6,15 +6,13 @@ import { FaDiscord } from "react-icons/fa";
 import { FiHelpCircle } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import {
-  Avatar,
+  AbsoluteCenter,
   Box,
   Button,
   Card,
   Flex,
   Heading,
   IconButton,
-  Input,
-  Link,
   Menu,
   MenuButton,
   MenuItem,
@@ -22,12 +20,12 @@ import {
   Select,
   SimpleGrid,
   Text,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { NavServerList } from "~/components/NavServerList";
 import { channel } from "diagnostics_channel";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import { IConfig } from "~/models/GuildModel";
 
 interface channel {
   id: string;
@@ -58,7 +56,9 @@ const Home: NextPage = () => {
   const router = useRouter();
   const { data: user, status } = useSession();
 
+  const [configData, setConfigData] = useState<IConfig>();
   const [channelArray, setChannelArray] = useState<Array<channel>>([]);
+  const [categoryArray, setCategoryArray] = useState<Array<channel>>([]);
   const [roleArray, setRoleArray] = useState<Array<role>>([]);
   const [guildInfo, setGuildInfo] = useState<guild>({} as guild);
   const [loading, setLoading] = useState(true);
@@ -66,12 +66,16 @@ const Home: NextPage = () => {
   const [updatedValues, setUpdatedValues] = useState({});
   const [isSaved, setIsSaved] = useState(false);
 
+  const [dataFetchSuccess, setDataFetchSuccess] = useState(true);
+
   const getServerInformation = async () => {
     try {
       const id = router.query.guildId;
       const apiUrl = "http://localhost:3000/api";
       const getGuild = await axios.get(`${apiUrl}/guild/info?guildId=${id}`);
-
+      const getConfig = await axios.get(
+        `${apiUrl}/config/guild?token=${user?.user?.token}&id=${id}`
+      );
       const getChannel = await axios.get(
         `${apiUrl}/guild/channels?guildId=${id}`
       );
@@ -79,11 +83,18 @@ const Home: NextPage = () => {
       const guildData = getGuild.data;
 
       const channelData = getChannel.data.filter((c: any) => c.type == 0);
-      console.log(channelData);
+      const categoryData = getChannel.data.filter((c: any) => c.type == 4);
+      const roleData = guildData.roles.filter((r: any) => r.managed == false);
+
+      if (getConfig.data.status == 404) {
+        setDataFetchSuccess(false);
+      }
 
       setGuildInfo(guildData);
+      setCategoryArray(categoryData);
       setChannelArray(channelData);
-      setRoleArray(guildData.roles);
+      setRoleArray(roleData);
+      setConfigData(getConfig.data);
 
       setLoading(false);
     } catch (error: any) {
@@ -96,6 +107,46 @@ const Home: NextPage = () => {
       getServerInformation();
     }
   }, [status]);
+
+  if (dataFetchSuccess == false) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <Text
+          color={"red.500"}
+          fontWeight={"bold"}
+          fontSize={"4xl"}
+          textAlign={"center"}
+        >
+          Resolv has not been configured in your server yet.
+        </Text>
+        <Text textAlign={"center"} fontSize={"2xl"}>
+          To use Resolv Dashboard, you are required to run a command before
+          using the dashboard to prepare all config values.
+        </Text>
+        <Button
+          colorScheme="green"
+          size={"lg"}
+          mt={4}
+          pl={"70"}
+          pr={"70"}
+          pt={"9"}
+          pb={"9"}
+          fontSize={"2xl"}
+          onClick={() => router.push("/servers")}
+        >
+          Go Back to Server Selector
+        </Button>
+      </div>
+    );
+  }
 
   if (status == "authenticated") {
     if (loading) {
@@ -131,7 +182,7 @@ const Home: NextPage = () => {
           >
             <Flex align="center" justify="space-between" mb={8}>
               <Heading as="h1" size="lg">
-                Resolv Dashboard
+                {guildInfo.name}'s Server Dashboard
               </Heading>
               <Menu>
                 <MenuButton
@@ -147,26 +198,28 @@ const Home: NextPage = () => {
               </Menu>
             </Flex>
             <Flex justify="center">
-              <SimpleGrid columns={[1]} spacing={10} spacingX={20}>
+              <SimpleGrid>
                 <Card
-                  key="breakRequestChannel"
+                  key="breakSystemConfig"
+                  mt="10"
                   p={10}
                   shadow="md"
                   rounded="md"
-                  width="250px"
+                  width="1000px"
                   display="flex"
                   flexDirection="column"
-                  alignItems="center"
-                  justifyContent="center"
-                  textAlign="center"
                 >
-                  <Heading as="h2" size="md">
-                    Break Request Channel
+                  <Heading as="h2" size="md" mb="5" textAlign="left">
+                    Break Config
                   </Heading>
+                  <Text>Break Request Channel</Text>
                   <Select
                     disabled={isSaving}
                     key={"breakRequestChannelSelector"}
                     name="breakRequestChannel"
+                    defaultValue={
+                      configData?.BreakAcceptOrDenyChannel?.split("-")[1]
+                    }
                     onChange={(e) => {
                       const newValue = e.target.value;
                       setUpdatedValues((prevValues) => {
@@ -192,6 +245,85 @@ const Home: NextPage = () => {
                     ))}
                   </Select>
                 </Card>
+                <Card
+                  key="threadConfigConfig"
+                  mt="10"
+                  p={10}
+                  shadow="md"
+                  rounded="md"
+                  width="1000px"
+                  display="flex"
+                  flexDirection="column"
+                >
+                  <Heading as="h2" size="md" mb="5" textAlign="left">
+                    Thread System
+                  </Heading>
+                  <Text>Thread Category Channel</Text>
+                  <Select
+                    disabled={isSaving}
+                    key={"threadCategorySelector"}
+                    name="threadCategory"
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setUpdatedValues((prevValues) => {
+                        // @ts-ignore
+                        if (prevValues.threadCategory !== newValue) {
+                          return {
+                            ...prevValues,
+                            threadCategory: newValue,
+                          };
+                        }
+                        return prevValues;
+                      });
+                    }}
+                  >
+                    {categoryArray.map((channel: channel) => (
+                      <option
+                        key={channel.id}
+                        id={channel.id}
+                        value={channel.id}
+                        selected={
+                          channel.id ===
+                          configData?.ContactCategoryID?.split("-")[1]
+                            ? true
+                            : undefined
+                        }
+                      >
+                        {channel.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <br />
+                  <Text>Staff Role</Text>
+                  <Select
+                    disabled={isSaving}
+                    key={"staffRoleSelector"}
+                    name="staffRole"
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setUpdatedValues((prevValues) => {
+                        // @ts-ignore
+                        if (prevValues.staffRole !== newValue) {
+                          return {
+                            ...prevValues,
+                            staffRole: newValue,
+                          };
+                        }
+                        return prevValues;
+                      });
+                    }}
+                  >
+                    {roleArray.map((channel: channel) => (
+                      <option
+                        key={channel.id}
+                        id={channel.id + "-" + channel.name}
+                        value={channel.id}
+                      >
+                        {channel.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Card>
               </SimpleGrid>
             </Flex>
           </Box>
@@ -200,7 +332,7 @@ const Home: NextPage = () => {
             colorScheme="blue"
             loadingText="Saving..."
             isLoading={isSaving}
-            disabled={isSaved}
+            disabled={!isSaved}
             style={{
               position: "fixed",
               bottom: "20px",
@@ -219,6 +351,7 @@ const Home: NextPage = () => {
               setIsSaving(true);
               setTimeout(() => {
                 setIsSaving(false);
+                // handle saving
                 setIsSaved(true);
                 setTimeout(() => {
                   setIsSaved(false);
