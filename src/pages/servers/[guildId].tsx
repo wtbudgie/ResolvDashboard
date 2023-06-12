@@ -61,16 +61,17 @@ const ServerConfigEditorPage: NextPage = () => {
   const [roleArray, setRoleArray] = useState<Array<role>>([]);
   const [guildInfo, setGuildInfo] = useState<guild>({} as guild);
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [updatedValues, setUpdatedValues] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   const [dataFetchSuccess, setDataFetchSuccess] = useState(true);
 
+  const apiUrl = "http://localhost:3000/api";
+  const id = router.query.guildId;
+
   const getServerInformation = async () => {
     try {
-      const id = router.query.guildId;
-      const apiUrl = "http://localhost:3000/api";
       const getConfig = await axios.get(
         `${apiUrl}/config/guild?token=${user?.user?.token}&id=${id}`
       );
@@ -215,18 +216,18 @@ const ServerConfigEditorPage: NextPage = () => {
                   <Select
                     disabled={isSaving}
                     key={"breakRequestChannelSelector"}
-                    name="breakRequestChannel"
+                    name="BreakAcceptOrDenyChannel"
                     defaultValue={
                       configData?.BreakAcceptOrDenyChannel?.split("-")[1]
                     }
                     onChange={(e) => {
-                      const newValue = e.target.value;
-                      setUpdatedValues((prevValues) => {
+                      const newValue = `${id}-${e.target.value}`;
+                      setUpdatedValues((prevValues: any) => {
                         // @ts-ignore
-                        if (prevValues.breakRequestChannel !== newValue) {
+                        if (prevValues.BreakAcceptOrDenyChannel !== newValue) {
                           return {
                             ...prevValues,
-                            breakRequestChannel: newValue,
+                            BreakAcceptOrDenyChannel: newValue,
                           };
                         }
                         return prevValues;
@@ -240,6 +241,37 @@ const ServerConfigEditorPage: NextPage = () => {
                         value={channel.id}
                       >
                         {channel.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <br />
+                  <Text>Break Role</Text>
+                  <Select
+                    disabled={isSaving}
+                    key={"breakRoleSelector"}
+                    name="BreakRoleID"
+                    defaultValue={configData?.BreakRoleID?.split("-")[1]}
+                    onChange={(e) => {
+                      const newValue = `${id}-${e.target.value}`;
+                      setUpdatedValues((prevValues: any) => {
+                        // @ts-ignore
+                        if (prevValues.BreakRoleID !== newValue) {
+                          return {
+                            ...prevValues,
+                            BreakRoleID: newValue,
+                          };
+                        }
+                        return prevValues;
+                      });
+                    }}
+                  >
+                    {roleArray.map((role: role) => (
+                      <option
+                        key={role.id}
+                        id={role.id + "-" + role.name}
+                        value={role.id}
+                      >
+                        {role.name}
                       </option>
                     ))}
                   </Select>
@@ -261,15 +293,16 @@ const ServerConfigEditorPage: NextPage = () => {
                   <Select
                     disabled={isSaving}
                     key={"threadCategorySelector"}
-                    name="threadCategory"
+                    name="ContactCategoryID"
+                    defaultValue={configData?.ContactCategoryID?.split("-")[1]}
                     onChange={(e) => {
-                      const newValue = e.target.value;
-                      setUpdatedValues((prevValues) => {
+                      const newValue = `${id}-${e.target.value}`;
+                      setUpdatedValues((prevValues: any) => {
                         // @ts-ignore
-                        if (prevValues.threadCategory !== newValue) {
+                        if (prevValues.ContactCategoryID !== newValue) {
                           return {
                             ...prevValues,
-                            threadCategory: newValue,
+                            ContactCategoryID: newValue,
                           };
                         }
                         return prevValues;
@@ -280,42 +313,6 @@ const ServerConfigEditorPage: NextPage = () => {
                       <option
                         key={channel.id}
                         id={channel.id}
-                        value={channel.id}
-                        selected={
-                          channel.id ===
-                          configData?.ContactCategoryID?.split("-")[1]
-                            ? true
-                            : undefined
-                        }
-                      >
-                        {channel.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <br />
-                  <Text>Staff Role</Text>
-                  <Select
-                    disabled={isSaving}
-                    key={"staffRoleSelector"}
-                    name="staffRole"
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setUpdatedValues((prevValues) => {
-                        // @ts-ignore
-                        if (prevValues.staffRole !== newValue) {
-                          return {
-                            ...prevValues,
-                            staffRole: newValue,
-                          };
-                        }
-                        return prevValues;
-                      });
-                    }}
-                  >
-                    {roleArray.map((channel: channel) => (
-                      <option
-                        key={channel.id}
-                        id={channel.id + "-" + channel.name}
                         value={channel.id}
                       >
                         {channel.name}
@@ -342,19 +339,33 @@ const ServerConfigEditorPage: NextPage = () => {
             fontSize={"2xl"}
             padding={"20px 30px"}
             pointerEvents={isSaved ? "none" : "auto"}
-            onClick={() => {
+            onClick={async () => {
               if (Object.keys(updatedValues).length > 0) {
                 setUpdatedValues({});
-                console.log(updatedValues);
               }
               setIsSaving(true);
-              setTimeout(() => {
+              setIsSaved(false);
+
+              const setConfig = await axios.post(
+                `${apiUrl}/config/set?id=${router.query.guildId}`,
+                {
+                  token: user?.user?.token,
+                  changes: updatedValues,
+                }
+              );
+              console.log(setConfig.data);
+              if (setConfig.data.success == true) {
                 setIsSaving(false);
-                // handle saving
                 setIsSaved(true);
-                setTimeout(() => {
-                  setIsSaved(false);
-                }, 3000);
+                setConfigData(setConfig.data.newConfig);
+              } else {
+                console.error("Error saving data");
+                setIsSaving(false);
+                setIsSaved(false);
+              }
+
+              setTimeout(() => {
+                setIsSaved(false);
               }, 3000);
             }}
           >

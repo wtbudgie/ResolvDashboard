@@ -31,9 +31,9 @@ export interface IConfig extends Document {
 
 const configSchema = new Schema<IConfig>({
   GuildID: { type: String, required: true },
-  BreakAcceptOrDenyChannel: { type: String, required: true },
-  ContactCategoryID: { type: String, required: true },
-  BreakRoleID: { type: String, required: true },
+  BreakAcceptOrDenyChannel: { type: String, required: false },
+  ContactCategoryID: { type: String, required: false },
+  BreakRoleID: { type: String, required: false },
   HRRoleID: { type: [String], default: [] },
   StaffRoleID: { type: [String], default: [] },
   AutoEndBreak: { type: Boolean, default: false },
@@ -45,11 +45,11 @@ const configSchema = new Schema<IConfig>({
 
   ApplicationSystem: {
     Enabled: { type: Boolean, default: false },
-    GuildID: { type: String, required: true },
-    ChannelID: { type: String, required: true },
-    RoleID: { type: String, required: true },
+    GuildID: { type: String, required: false },
+    ChannelID: { type: String, required: false },
+    RoleID: { type: String, required: false },
     Types: { type: [String], default: [] },
-    Message: { type: String, required: true },
+    Message: { type: String, required: false },
   },
 
   PromotionSystem: {
