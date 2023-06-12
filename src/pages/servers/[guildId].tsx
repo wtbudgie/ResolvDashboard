@@ -25,6 +25,8 @@ import { channel } from "diagnostics_channel";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { IConfig } from "~/models/GuildModel";
+import { ConfigSelector } from "~/components/ConfigSelector";
+import { ConfigSaveButton } from "~/components/ConfigSaveButton";
 
 interface channel {
   id: string;
@@ -212,69 +214,31 @@ const ServerConfigEditorPage: NextPage = () => {
                   <Heading as="h2" size="md" mb="5" textAlign="left">
                     Break Config
                   </Heading>
-                  <Text>Break Request Channel</Text>
-                  <Select
-                    disabled={isSaving}
-                    key={"breakRequestChannelSelector"}
-                    name="BreakAcceptOrDenyChannel"
+                  <ConfigSelector
+                    configValue="BreakAcceptOrDenyChannel"
+                    displayName="Break Request Channel"
+                    isSaving={isSaving}
                     defaultValue={
-                      configData?.BreakAcceptOrDenyChannel?.split("-")[1]
+                      configData?.BreakAcceptOrDenyChannel?.split(
+                        "-"
+                      )[1] as string
                     }
-                    onChange={(e) => {
-                      const newValue = `${id}-${e.target.value}`;
-                      setUpdatedValues((prevValues: any) => {
-                        // @ts-ignore
-                        if (prevValues.BreakAcceptOrDenyChannel !== newValue) {
-                          return {
-                            ...prevValues,
-                            BreakAcceptOrDenyChannel: newValue,
-                          };
-                        }
-                        return prevValues;
-                      });
-                    }}
-                  >
-                    {channelArray.map((channel: channel) => (
-                      <option
-                        key={channel.id}
-                        id={channel.id}
-                        value={channel.id}
-                      >
-                        {channel.name}
-                      </option>
-                    ))}
-                  </Select>
+                    optionArray={channelArray as [channel]}
+                    id={id as string}
+                    setUpdatedValues={setUpdatedValues}
+                  />
                   <br />
-                  <Text>Break Role</Text>
-                  <Select
-                    disabled={isSaving}
-                    key={"breakRoleSelector"}
-                    name="BreakRoleID"
-                    defaultValue={configData?.BreakRoleID?.split("-")[1]}
-                    onChange={(e) => {
-                      const newValue = `${id}-${e.target.value}`;
-                      setUpdatedValues((prevValues: any) => {
-                        // @ts-ignore
-                        if (prevValues.BreakRoleID !== newValue) {
-                          return {
-                            ...prevValues,
-                            BreakRoleID: newValue,
-                          };
-                        }
-                        return prevValues;
-                      });
-                    }}
-                  >
-                    {roleArray.map((role: role) => (
-                      <option
-                        key={role.id}
-                        id={role.id + "-" + role.name}
-                        value={role.id}
-                      >
-                        {role.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <ConfigSelector
+                    configValue="BreakRoleID"
+                    displayName="Break Role"
+                    isSaving={isSaving}
+                    defaultValue={
+                      configData?.BreakRoleID?.split("-")[1] as string
+                    }
+                    optionArray={roleArray as [role]}
+                    id={id as string}
+                    setUpdatedValues={setUpdatedValues}
+                  />
                 </Card>
                 <Card
                   key="threadConfigConfig"
@@ -289,88 +253,31 @@ const ServerConfigEditorPage: NextPage = () => {
                   <Heading as="h2" size="md" mb="5" textAlign="left">
                     Thread System
                   </Heading>
-                  <Text>Thread Category Channel</Text>
-                  <Select
-                    disabled={isSaving}
-                    key={"threadCategorySelector"}
-                    name="ContactCategoryID"
-                    defaultValue={configData?.ContactCategoryID?.split("-")[1]}
-                    onChange={(e) => {
-                      const newValue = `${id}-${e.target.value}`;
-                      setUpdatedValues((prevValues: any) => {
-                        // @ts-ignore
-                        if (prevValues.ContactCategoryID !== newValue) {
-                          return {
-                            ...prevValues,
-                            ContactCategoryID: newValue,
-                          };
-                        }
-                        return prevValues;
-                      });
-                    }}
-                  >
-                    {categoryArray.map((channel: channel) => (
-                      <option
-                        key={channel.id}
-                        id={channel.id}
-                        value={channel.id}
-                      >
-                        {channel.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <ConfigSelector
+                    configValue="ContactCategoryID"
+                    displayName="Thread Category Channel"
+                    isSaving={isSaving}
+                    defaultValue={
+                      configData?.ContactCategoryID?.split("-")[1] as string
+                    }
+                    optionArray={categoryArray as [channel]}
+                    id={id as string}
+                    setUpdatedValues={setUpdatedValues}
+                  />
                 </Card>
               </SimpleGrid>
+
+              <ConfigSaveButton
+                isSaved={isSaved}
+                setIsSaved={setIsSaved}
+                isSaving={isSaving}
+                setIsSaving={setIsSaving}
+                updatedValues={updatedValues}
+                setUpdatedValues={setUpdatedValues}
+                setConfigData={setConfigData}
+              />
             </Flex>
           </Box>
-          <Button
-            type="button"
-            colorScheme="blue"
-            loadingText="Saving..."
-            isLoading={isSaving}
-            disabled={!isSaved}
-            style={{
-              position: "fixed",
-              bottom: "20px",
-              right: "20px",
-              transition: ".5s",
-            }}
-            size={"lg"}
-            fontSize={"2xl"}
-            padding={"20px 30px"}
-            pointerEvents={isSaved ? "none" : "auto"}
-            onClick={async () => {
-              if (Object.keys(updatedValues).length > 0) {
-                setUpdatedValues({});
-              }
-              setIsSaving(true);
-              setIsSaved(false);
-
-              const setConfig = await axios.post(
-                `${apiUrl}/config/set?id=${router.query.guildId}`,
-                {
-                  token: user?.user?.token,
-                  changes: updatedValues,
-                }
-              );
-              console.log(setConfig.data);
-              if (setConfig.data.success == true) {
-                setIsSaving(false);
-                setIsSaved(true);
-                setConfigData(setConfig.data.newConfig);
-              } else {
-                console.error("Error saving data");
-                setIsSaving(false);
-                setIsSaved(false);
-              }
-
-              setTimeout(() => {
-                setIsSaved(false);
-              }, 3000);
-            }}
-          >
-            {isSaved ? "Saved" : isSaving ? "Saving..." : "Save"}
-          </Button>
         </>
       );
     }
